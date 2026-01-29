@@ -11,6 +11,10 @@ on:
         required: false
         default: ''
 
+# 添加权限声明
+permissions:
+  contents: write
+
 env:
   CARGO_TERM_COLOR: always
 
