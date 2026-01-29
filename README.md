@@ -27,7 +27,7 @@ rprint 是一个 Web 端远程打印服务客户端，通过 WebSocket 接收打
 
 #### 从 Release 下载
 
-从 [Releases](https://github.com/YOUR_USERNAME/rprint/releases) 页面下载最新版本：
+从 [Releases](https://github.com/LemonYangZW/rprint/releases) 页面下载最新版本：
 
 - `rprint_x.x.x_x64-setup.exe` - NSIS 安装程序（推荐）
 - `rprint_x.x.x_x64_en-US.msi` - MSI 安装包
@@ -36,7 +36,7 @@ rprint 是一个 Web 端远程打印服务客户端，通过 WebSocket 接收打
 
 ```bash
 # 克隆仓库
-git clone https://github.com/YOUR_USERNAME/rprint.git
+git clone https://github.com/LemonYangZW/rprint.git
 cd rprint
 
 # 安装依赖
@@ -163,7 +163,7 @@ rprint is a remote printing service client that receives print jobs via WebSocke
 
 ### Installation
 
-Download the latest version from [Releases](https://github.com/YOUR_USERNAME/rprint/releases):
+Download the latest version from [Releases](https://github.com/LemonYangZW/rprint/releases):
 
 - `rprint_x.x.x_x64-setup.exe` - NSIS installer (recommended)
 - `rprint_x.x.x_x64_en-US.msi` - MSI package
