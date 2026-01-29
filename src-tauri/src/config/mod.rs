@@ -4,6 +4,8 @@
 
 mod settings;
 
+// Re-export all config types for external use
+#[allow(unused_imports)]
 pub use settings::{AppConfig, PrinterConfig, ServerConfig, UiConfig};
 
 use std::path::PathBuf;

@@ -249,6 +249,7 @@ pub fn render_template(template: &str, data: &Value) -> Result<String, String> {
 }
 
 /// ESC/POS 命令构建器
+#[allow(dead_code)]
 pub mod escpos {
     /// 初始化打印机
     pub const INIT: &[u8] = b"\x1B@";
@@ -337,6 +338,7 @@ pub mod escpos {
 }
 
 /// ZPL 命令构建器
+#[allow(dead_code)]
 pub mod zpl {
     /// 标签开始
     pub const LABEL_START: &str = "^XA";
