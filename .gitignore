@@ -46,3 +46,4 @@ scripts/*.log
 # Temporary files
 *.tmp
 *.temp
+.ace-tool/

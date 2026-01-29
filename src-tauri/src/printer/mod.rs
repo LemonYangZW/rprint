@@ -3,6 +3,8 @@
 #[cfg(windows)]
 mod windows_printer;
 
+pub mod pdf;
+
 use crate::protocol::PrinterInfo;
 
 /// 打印机管理器 trait

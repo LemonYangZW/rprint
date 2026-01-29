@@ -229,9 +229,13 @@ fn execute_print(
                 state.printer_manager.print_text(&printer_name, &rendered)?;
             }
         }
-        "pdf" => {
-            // PDF 打印 - TODO: 需要额外处理
-            return Err("PDF printing not yet implemented".to_string());
+        "pdf" | "html" => {
+            // PDF/HTML 打印 - 通过 WebSocket 不支持，需要通过 Tauri 命令调用
+            // 这里返回提示信息，客户端应使用 print_pdf 或 print_template_as_pdf 命令
+            return Err(
+                "PDF printing via WebSocket is not supported. Please use the Tauri command 'print_pdf' or 'print_template_as_pdf' instead."
+                    .to_string(),
+            );
         }
         _ => {
             return Err(format!("Unknown template type: {}", req.template_type));

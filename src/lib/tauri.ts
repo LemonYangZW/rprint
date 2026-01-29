@@ -94,6 +94,33 @@ export async function printWithTemplate(
   return invoke("print_with_template", { printerName, template, data });
 }
 
+// 模板预览（不打印，只返回渲染结果）
+export async function previewTemplate(
+  template: string,
+  data: Record<string, unknown>
+): Promise<string> {
+  return invoke("preview_template", { template, data });
+}
+
+// PDF/HTML 打印
+export async function printPdf(
+  htmlContent: string,
+  paperSize?: string,
+  silent?: boolean
+): Promise<void> {
+  return invoke("print_pdf", { htmlContent, paperSize, silent });
+}
+
+// 使用模板渲染并打印为 PDF
+export async function printTemplateAsPdf(
+  template: string,
+  data: Record<string, unknown>,
+  paperSize?: string,
+  silent?: boolean
+): Promise<void> {
+  return invoke("print_template_as_pdf", { template, data, paperSize, silent });
+}
+
 // 事件监听
 
 export interface ServerStatusEvent {

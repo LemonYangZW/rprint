@@ -19,6 +19,9 @@ import {
   Switch,
   InputNumber,
   Divider,
+  Select,
+  Alert,
+  Collapse,
 } from "antd";
 import {
   DashboardOutlined,
@@ -31,8 +34,13 @@ import {
   CopyOutlined,
   SaveOutlined,
   FolderOpenOutlined,
+  FileTextOutlined,
+  EyeOutlined,
+  SendOutlined,
+  EditOutlined,
 } from "@ant-design/icons";
 import { useAppStore } from "./stores/appStore";
+import { DesignerPage } from "./features/designer/DesignerPage";
 import {
   startWsServer,
   stopWsServer,
@@ -44,6 +52,9 @@ import {
   getAutostart,
   setAutostart,
   getLogDir,
+  previewTemplate,
+  printWithTemplate,
+  printTemplateAsPdf,
   type AppConfig,
 } from "./lib/tauri";
 
@@ -74,6 +85,19 @@ function App() {
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const [logDir, setLogDir] = useState<string>("");
   const [form] = Form.useForm();
+
+  // 模板设计页面状态
+  const [templateType, setTemplateType] = useState<"text" | "escpos" | "zpl" | "pdf">("text");
+  const [templateContent, setTemplateContent] = useState<string>(
+    '订单号: {{order_id}}\n客户: {{customer}}\n金额: {{currency total}}\n日期: {{date_format timestamp "%Y-%m-%d"}}'
+  );
+  const [templateData, setTemplateData] = useState<string>(
+    JSON.stringify({ order_id: "SO20260129-001", customer: "张三", total: 128.5, timestamp: Date.now() }, null, 2)
+  );
+  const [previewResult, setPreviewResult] = useState<string>("");
+  const [previewError, setPreviewError] = useState<string>("");
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [selectedPrinter, setSelectedPrinter] = useState<string>("");
 
   const { serverStatus, setServerStatus, printers, setPrinters, jobs, connectionCount, config } =
     useAppStore();
@@ -263,6 +287,8 @@ function App() {
   const menuItems = [
     { key: "dashboard", icon: <DashboardOutlined />, label: "仪表盘" },
     { key: "printers", icon: <PrinterOutlined />, label: "打印机" },
+    { key: "designer", icon: <EditOutlined />, label: "可视化设计" },
+    { key: "templates", icon: <FileTextOutlined />, label: "模板编辑" },
     { key: "history", icon: <HistoryOutlined />, label: "历史记录" },
     { key: "settings", icon: <SettingOutlined />, label: "设置" },
   ];
@@ -414,6 +440,239 @@ function App() {
     </div>
   );
 
+  // 预览模板
+  const handlePreview = async () => {
+    setPreviewLoading(true);
+    setPreviewError("");
+    try {
+      const data = JSON.parse(templateData);
+      const result = await previewTemplate(templateContent, data);
+      setPreviewResult(result);
+    } catch (e) {
+      setPreviewError(String(e));
+      setPreviewResult("");
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // 测试打印
+  const handleTestPrint = async () => {
+    setPreviewLoading(true);
+    try {
+      const data = JSON.parse(templateData);
+
+      if (templateType === "pdf") {
+        // PDF 打印不需要选择打印机，使用系统打印对话框
+        await printTemplateAsPdf(templateContent, data, "A4", false);
+        message.success("PDF 打印对话框已打开");
+      } else {
+        // 其他类型需要选择打印机
+        if (!selectedPrinter) {
+          message.warning("请先选择打印机");
+          return;
+        }
+        await printWithTemplate(selectedPrinter, templateContent, data);
+        message.success("打印任务已发送");
+      }
+    } catch (e) {
+      message.error(`打印失败: ${e}`);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // 渲染模板设计页面
+  const renderTemplates = () => (
+    <div style={{ padding: 24 }}>
+      <Title level={4}>模板设计</Title>
+      <Row gutter={16}>
+        <Col span={12}>
+          <Card
+            title="模板编辑器"
+            extra={
+              <Select
+                value={templateType}
+                onChange={setTemplateType}
+                style={{ width: 120 }}
+                options={[
+                  { value: "text", label: "纯文本" },
+                  { value: "pdf", label: "PDF/HTML" },
+                  { value: "escpos", label: "ESC/POS" },
+                  { value: "zpl", label: "ZPL" },
+                ]}
+              />
+            }
+          >
+            <Input.TextArea
+              value={templateContent}
+              onChange={(e) => setTemplateContent(e.target.value)}
+              rows={12}
+              placeholder="在此输入 Handlebars 模板..."
+              style={{ fontFamily: "monospace", fontSize: 13 }}
+            />
+
+            <Divider>测试数据 (JSON)</Divider>
+
+            <Input.TextArea
+              value={templateData}
+              onChange={(e) => setTemplateData(e.target.value)}
+              rows={6}
+              placeholder='{"key": "value"}'
+              style={{ fontFamily: "monospace", fontSize: 13 }}
+            />
+
+            <Space style={{ marginTop: 16 }}>
+              <Button
+                type="primary"
+                icon={<EyeOutlined />}
+                onClick={handlePreview}
+                loading={previewLoading}
+              >
+                预览渲染
+              </Button>
+              <Select
+                value={selectedPrinter}
+                onChange={setSelectedPrinter}
+                style={{ width: 200 }}
+                placeholder="选择打印机"
+                options={printers.map((p) => ({
+                  value: p.name,
+                  label: p.name + (p.isDefault ? " (默认)" : ""),
+                }))}
+              />
+              <Button
+                icon={<SendOutlined />}
+                onClick={handleTestPrint}
+                loading={previewLoading}
+                disabled={!selectedPrinter}
+              >
+                测试打印
+              </Button>
+            </Space>
+          </Card>
+        </Col>
+
+        <Col span={12}>
+          <Card title="渲染预览" style={{ marginBottom: 16 }}>
+            {previewError ? (
+              <Alert type="error" message="渲染错误" description={previewError} />
+            ) : previewResult ? (
+              <pre
+                style={{
+                  background: "#f5f5f5",
+                  padding: 16,
+                  borderRadius: 4,
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-all",
+                  minHeight: 200,
+                  maxHeight: 400,
+                  overflow: "auto",
+                  fontFamily: "monospace",
+                  fontSize: 13,
+                }}
+              >
+                {previewResult}
+              </pre>
+            ) : (
+              <div style={{ color: "#999", textAlign: "center", padding: 40 }}>
+                点击"预览渲染"查看结果
+              </div>
+            )}
+          </Card>
+
+          <Card title="助手函数参考">
+            <Collapse
+              size="small"
+              items={[
+                {
+                  key: "format",
+                  label: "格式化函数",
+                  children: (
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="currency">
+                        <code>{"{{currency price}}"}</code> → ¥99.00
+                      </Descriptions.Item>
+                      <Descriptions.Item label="format_number">
+                        <code>{"{{format_number num 2}}"}</code> → 3.14
+                      </Descriptions.Item>
+                      <Descriptions.Item label="date_format">
+                        <code>{'{{date_format ts "%Y-%m-%d"}}'}</code>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  ),
+                },
+                {
+                  key: "string",
+                  label: "字符串函数",
+                  children: (
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="uppercase">
+                        <code>{"{{uppercase text}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="lowercase">
+                        <code>{"{{lowercase text}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="truncate">
+                        <code>{"{{truncate text 20}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="pad_left">
+                        <code>{'{{pad_left str 10 " "}}'}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="pad_right">
+                        <code>{'{{pad_right str 10 " "}}'}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="repeat">
+                        <code>{"{{repeat \"-\" 20}}"}</code>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  ),
+                },
+                {
+                  key: "math",
+                  label: "数学运算",
+                  children: (
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="add">
+                        <code>{"{{add a b}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="sub">
+                        <code>{"{{sub a b}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="mul">
+                        <code>{"{{mul a b}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="div">
+                        <code>{"{{div a b}}"}</code>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  ),
+                },
+                {
+                  key: "condition",
+                  label: "条件判断",
+                  children: (
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="eq">
+                        <code>{"{{#if (eq a b)}}...{{/if}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="ne">
+                        <code>{"{{#if (ne a b)}}...{{/if}}"}</code>
+                      </Descriptions.Item>
+                      <Descriptions.Item label="gt / lt">
+                        <code>{"{{#if (gt a b)}}...{{/if}}"}</code>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  ),
+                },
+              ]}
+            />
+          </Card>
+        </Col>
+      </Row>
+    </div>
+  );
+
   // 渲染设置
   const renderSettings = () => (
     <div style={{ padding: 24 }}>
@@ -523,6 +782,10 @@ function App() {
     switch (currentPage) {
       case "printers":
         return renderPrinters();
+      case "designer":
+        return <DesignerPage />;
+      case "templates":
+        return renderTemplates();
       case "history":
         return renderHistory();
       case "settings":

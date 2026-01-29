@@ -196,6 +196,64 @@ fn print_with_template(
     state.printer_manager.print_text(&printer_name, &rendered)
 }
 
+/// Tauri 命令：预览模板渲染结果（不打印）
+#[tauri::command]
+fn preview_template(template: String, data: serde_json::Value) -> Result<String, String> {
+    renderer::render_template(&template, &data)
+}
+
+/// Tauri 命令：打印 HTML/PDF 内容
+#[tauri::command]
+async fn print_pdf(
+    app: AppHandle,
+    html_content: String,
+    paper_size: Option<String>,
+    silent: Option<bool>,
+) -> Result<(), String> {
+    use printer::pdf::{print_html, wrap_html_for_print, PdfPrintOptions};
+
+    let paper = paper_size.unwrap_or_else(|| "A4".to_string());
+
+    // 包装 HTML 内容以添加打印样式
+    let wrapped_html = wrap_html_for_print(&html_content, &paper);
+
+    let options = PdfPrintOptions {
+        copies: 1,
+        paper_size: paper,
+        silent: silent.unwrap_or(false),
+    };
+
+    print_html(&app, &wrapped_html, options).await
+}
+
+/// Tauri 命令：使用模板渲染并打印为 PDF
+#[tauri::command]
+async fn print_template_as_pdf(
+    app: AppHandle,
+    template: String,
+    data: serde_json::Value,
+    paper_size: Option<String>,
+    silent: Option<bool>,
+) -> Result<(), String> {
+    use printer::pdf::{print_html, wrap_html_for_print, PdfPrintOptions};
+
+    // 渲染模板
+    let rendered = renderer::render_template(&template, &data)?;
+
+    let paper = paper_size.unwrap_or_else(|| "A4".to_string());
+
+    // 包装 HTML 内容
+    let wrapped_html = wrap_html_for_print(&rendered, &paper);
+
+    let options = PdfPrintOptions {
+        copies: 1,
+        paper_size: paper,
+        silent: silent.unwrap_or(false),
+    };
+
+    print_html(&app, &wrapped_html, options).await
+}
+
 /// Tauri 命令：设置开机自启动
 #[tauri::command]
 async fn set_autostart(app: AppHandle, enabled: bool) -> Result<(), String> {
@@ -265,6 +323,9 @@ pub fn run() {
             print_raw,
             print_text,
             print_with_template,
+            preview_template,
+            print_pdf,
+            print_template_as_pdf,
             set_autostart,
             get_autostart,
             get_log_dir
